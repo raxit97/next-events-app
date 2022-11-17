@@ -1,21 +1,23 @@
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { EventList } from "../../components/events/event-list";
 import { ResultsTitle } from "../../components/events/results-title";
 import { Button } from "../../components/ui/button";
 import { ErrorAlert } from "../../components/ui/error-alert";
-import { getFilteredEvents } from "../../constants/dummy-data";
+import { getFilteredEvents } from "../../helpers/api-util";
+import useSWR from "swr"
+import { useRouter } from "next/router";
 
 const FilteredEventsPage = () => {
 
     const router = useRouter();
-    const [filteredEvents, setFilteredEvents] = useState();
-    const [error, setError] = useState();
-    const [dateToDisplay, setDateToDisplay] = useState();
     const filterData = router.query.filterBy;
+    const [filteredEvents, setFilteredEvents] = useState();
+    const [error, setError] = useState(false);
+    const [date, setDate] = useState();
+    const { data } = useSWR("https://nextjs-course-2921b-default-rtdb.firebaseio.com/events.json");
 
     useEffect(() => {
-        if (filterData) {
+        if (filterData && data) {
             const filterYear = Number(filterData[0]);
             const filterMonth = Number(filterData[1]);
             if (
@@ -24,13 +26,24 @@ const FilteredEventsPage = () => {
             ) {
                 setError(true);
             } else {
-                const filteredEvents = getFilteredEvents({ year: filterYear, month: filterMonth });
+                const events = [];
+                const keys = Object.keys(data);
+                keys.forEach((key) => {
+                    events.push({
+                        ...data[key],
+                        id: key
+                    });
+                });
+                const filteredEvents = events.filter((event) => {
+                    const eventDate = new Date(event.date);
+                    return eventDate.getFullYear() === filterYear && eventDate.getMonth() === filterMonth - 1;
+                });
                 const date = new Date(filterYear, filterMonth - 1);
                 setFilteredEvents(filteredEvents);
-                setDateToDisplay(date)
+                setDate(date);
             }
         }
-    }, [filterData]);
+    }, [filterData, data]);
 
     return (
         <div>
@@ -46,19 +59,19 @@ const FilteredEventsPage = () => {
                 </>
             }
             {
-                !filterData && <p className="center">Loading...</p>
+                !data && <p className="center">Loading...</p>
             }
             {
                 filteredEvents && filteredEvents.length > 0
                     ?
                     <>
-                        <ResultsTitle date={dateToDisplay} />
+                        <ResultsTitle date={date} />
                         <EventList items={filteredEvents} />
                     </>
                     :
                     <>
                         {
-                            !error &&
+                            !error && data &&
                             <>
                                 <ErrorAlert>
                                     <p>No events found for the chosen filters!</p>
@@ -73,5 +86,36 @@ const FilteredEventsPage = () => {
         </div>
     );
 }
+
+// export async function getServerSideProps(context) {
+
+//     const { params } = context;
+//     const filterData = params.filterBy;
+//     const filterYear = Number(filterData[0]);
+//     const filterMonth = Number(filterData[1]);
+//     if (
+//         isNaN(filterYear) || isNaN(filterMonth) || filterYear > 2030 ||
+//         filterYear < 2021 || filterMonth < 1 || filterMonth > 12
+//     ) {
+//         return {
+//             props: {
+//                 error: true
+//             }
+//             // notFound: true,
+//             // redirect: {
+//             //     destination: "/error"
+//             // }
+//         };
+//     } else {
+//         const filteredEvents = await getFilteredEvents({ year: filterYear, month: filterMonth });
+//         const date = new Date(filterYear, filterMonth - 1);
+//         return {
+//             props: {
+//                 filteredEvents,
+//                 date: date.toString()
+//             }
+//         }
+//     }
+// }
 
 export default FilteredEventsPage;
