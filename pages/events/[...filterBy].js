@@ -6,6 +6,7 @@ import { ErrorAlert } from "../../components/ui/error-alert";
 import { getFilteredEvents } from "../../helpers/api-util";
 import useSWR from "swr"
 import { useRouter } from "next/router";
+import Head from "next/head";
 
 const FilteredEventsPage = () => {
 
@@ -47,6 +48,10 @@ const FilteredEventsPage = () => {
 
     return (
         <div>
+            <Head>
+                <title>Filtered Events</title>
+                {filterData && <meta name="Filtered events" content={`All events for ${filterData[1]}/${filterData[0]}`} />}
+            </Head>
             {
                 error &&
                 <>
